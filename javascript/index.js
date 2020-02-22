@@ -1,123 +1,88 @@
 let currentScore = 0;
-let answer = "";
+let answer = '';
 let xhr = new XMLHttpRequest();
 
 // test
-const quote = document.querySelector(".quoteGenP");
-const answer1 = document.querySelector("#author1");
-const answer2 = document.querySelector("#author2");
-const answer3 = document.querySelector("#author3");
-const answer4 = document.querySelector("#author4");
-const score = document.querySelector(".scoreboardField");
-const losingQuote = document.querySelector(".wrongFact");
-const authorQuotes = document.querySelector(".authorQuotes");
+const quote = document.querySelector('.quoteGenP');
+const score = document.querySelector('.scoreboardField');
+const losingQuote = document.querySelector('.wrongFact');
+const authorQuotes = document.querySelector('.authorQuotes');
+const authors = document.querySelectorAll('#author');
 
 //materialize init
 M.AutoInit();
 
-// button functions
-answer1.addEventListener("click", e => {
-  e.preventDefault();
-  cleanUp();
-  emptyQuoteBox();
-  if (answer1.innerText.toLowerCase() === answer.toLowerCase()) {
-    console.log("You are correct!");
-    currentScore += 1;
-    score.innerHTML = currentScore;
-    reset();
-  } else {
-    wrongAnswer();
-  }
-});
-
-answer2.addEventListener("click", e => {
-  e.preventDefault();
-  cleanUp();
-  emptyQuoteBox();
-  if (answer2.innerText.toLowerCase() === answer.toLowerCase()) {
-    console.log("You are correct!");
-    currentScore += 1;
-    score.innerHTML = currentScore;
-    reset();
-  } else {
-    wrongAnswer();
-  }
-});
-
-answer3.addEventListener("click", e => {
-  e.preventDefault();
-  cleanUp();
-  emptyQuoteBox();
-  if (answer3.innerText.toLowerCase() === answer.toLowerCase()) {
-    console.log("You are correct!");
-    currentScore += 1;
-    score.innerHTML = currentScore;
-    reset();
-  } else {
-    wrongAnswer();
-  }
-});
-
-answer4.addEventListener("click", e => {
-  e.preventDefault();
-  cleanUp();
-  emptyQuoteBox();
-  if (answer4.innerText.toLowerCase() === answer.toLowerCase()) {
-    console.log("You are correct!");
-    currentScore += 1;
-    score.innerHTML = currentScore;
-    reset();
-  } else {
-    wrongAnswer();
-  }
-});
-
-// functions
-async function getQuoteAuthor() {
-  const quoteAPI = `https://quote-garden.herokuapp.com/quotes/random`;
-  await get(quoteAPI).then(response => {
-    console.log("testing for blank ", response.quoteAuthor);
-    if (response.quoteAuthor.length === 0) {
-      getQuoteAuthor();
+authors.forEach(auth => {
+  auth.addEventListener('click', e => {
+    e.preventDefault();
+    cleanUp();
+    emptyQuoteBox();
+    if (auth.innerText.toLowerCase() === answer.toLowerCase()) {
+      console.log('You are correct!');
+      currentScore += 1;
+      score.innerHTML = currentScore;
+      reset();
     } else {
-      quote.innerHTML = response.quoteText;
-      answer = response.quoteAuthor;
+      wrongAnswer();
     }
   });
-  console.log("assigning the func", answer);
+});
+
+// button functions
+
+async function getQuoteAuthor() {
+  const quoteAPI = `https://quote-garden.herokuapp.com/quotes/random`;
+  let quotes = await fetch(quoteAPI);
+  let data = await quotes.json();
+
+  console.log('results is', data.quoteAuthor);
+  if (data.quoteAuthor.length === 0) {
+    getQuoteAuthor();
+  } else {
+    quote.innerHTML = data.quoteText;
+    answer = data.quoteAuthor;
+  }
 }
 
 async function generateAuthorButtons() {
-  const quoteAPI = `https://quote-garden.herokuapp.com/quotes/random`;
-  let randomAuthors = [];
+  const authorsList = await Promise.all([
+    getRandomAuthor(),
+    getRandomAuthor(),
+    getRandomAuthor()
+  ]);
+  authorsList.push(answer);
 
-  while (randomAuthors.length < 3) {
-    check = await get(quoteAPI).then(response => {
-      return response.quoteAuthor;
-    });
-    if (check != false) {
-      randomAuthors.push(check);
-    }
+  let finalAuthorList = await randomizeAuthors(authorsList);
+
+  for (let i = 0; i < finalAuthorList.length; i++) {
+    const authorNode = authors[i];
+    const authorText = finalAuthorList[i];
+    authorNode.innerHTML = authorText;
   }
-  await randomAuthors.push(answer);
-  console.log(randomAuthors);
-  //
-  answer1.innerHTML = getRandomAuthor(randomAuthors);
-  answer2.innerHTML = getRandomAuthor(randomAuthors);
-  answer3.innerHTML = getRandomAuthor(randomAuthors);
-  answer4.innerHTML = getRandomAuthor(randomAuthors);
+}
+
+async function randomizeAuthors(authorArray) {
+  newAuthorArray = [];
+  console.log('the author array is ', authorArray);
+  for (let i = 0; i < 4; i++) {
+    num = Math.floor(Math.random() * authorArray.length);
+    newAuthorArray.push(authorArray[num]);
+    authorArray.splice(num, 1);
+  }
+  console.log('The new array is', newAuthorArray);
+  return newAuthorArray;
 }
 
 function getRelatedToAuthor() {
   let url = `https://en.wikipedia.org/w/api.php?action=query&origin=*&format=json&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch='${answer}'`;
-  xhr.open("GET", url, true);
+  xhr.open('GET', url, true);
 
   xhr.onload = function() {
     let data = JSON.parse(this.response);
 
     for (let i in data.query.pages) {
       let link = data.query.pages[i].title;
-      let relatedButton = document.createElement("button");
+      let relatedButton = document.createElement('button');
       relatedButton.innerHTML = `Another result from people who have searched ${answer} is: ${link}`;
       authorQuotes.append(relatedButton);
 
@@ -129,11 +94,16 @@ function getRelatedToAuthor() {
   };
 }
 
-function getRandomAuthor(randomAuthors) {
-  num = Math.floor(Math.random() * randomAuthors.length);
-  author = randomAuthors[num];
-  randomAuthors.splice(num, 1);
-  return author;
+async function getRandomAuthor() {
+  const quoteAPI = `https://quote-garden.herokuapp.com/quotes/random`;
+  let fetcher = await fetch(quoteAPI);
+  let data = await fetcher.json();
+  let author = data.quoteAuthor;
+  if (author.length === 0 || author === undefined) {
+    getRandomAuthor();
+  } else {
+    return author;
+  }
 }
 
 async function getNumbersQuote() {
@@ -155,12 +125,12 @@ async function serveQuotes() {
           if (quotes[i].quoteText === quotes[i - 1].quoteText) {
           } else {
             authorQuotes.append(quotes[i].quoteText);
-            let newParagraph = document.createElement("p");
+            let newParagraph = document.createElement('p');
             authorQuotes.append(newParagraph);
           }
         } else {
           authorQuotes.append(quotes[i].quoteText);
-          let newParagraph = document.createElement("p");
+          let newParagraph = document.createElement('p');
           authorQuotes.append(newParagraph);
         }
       }
@@ -170,12 +140,12 @@ async function serveQuotes() {
           if (quotes[i].quoteText === quotes[i - 1].quoteText) {
           } else {
             authorQuotes.append(quotes[i].quoteText);
-            let newParagraph = document.createElement("p");
+            let newParagraph = document.createElement('p');
             authorQuotes.append(newParagraph);
           }
         } else {
           authorQuotes.append(quotes[i].quoteText);
-          let newParagraph = document.createElement("p");
+          let newParagraph = document.createElement('p');
           authorQuotes.append(newParagraph);
         }
       }
@@ -185,11 +155,11 @@ async function serveQuotes() {
 
 async function askForQuotes() {
   authorQuotes.innerHTML = `Would you like to see more quotes from ${answer}?`;
-  const question = document.createElement("button");
-  question.innerHTML = "Yes";
+  const question = document.createElement('button');
+  question.innerHTML = 'Yes';
   authorQuotes.append(question);
 
-  question.addEventListener("click", e => {
+  question.addEventListener('click', e => {
     e.preventDefault();
     serveQuotes();
     cleanUp();
@@ -207,25 +177,24 @@ async function wrongAnswer() {
 }
 
 function cleanUp() {
-  authorQuotes.innerHTML = "";
+  authorQuotes.innerHTML = '';
 }
 
 function emptyQuoteBox() {
-  losingQuote.innerHTML = "";
+  losingQuote.innerHTML = '';
 }
 
 async function startUP() {
-  quote.innerHTML = "Your new quote is loading! Give us a second to fetch it!";
+  quote.innerHTML = 'Your new quote is loading! Give us a second to fetch it!';
   await getQuoteAuthor();
   await generateAuthorButtons();
-  console.log("answer", answer);
+  console.log('answer', answer);
 }
 
 function reset() {
-  answer1.innerHTML = "Loading...";
-  answer2.innerHTML = "Loading...";
-  answer3.innerHTML = "Loading...";
-  answer4.innerHTML = "Loading...";
+  authors.forEach(auth => {
+    auth.innerHTML = 'Loading...';
+  });
   startUP();
 }
 
